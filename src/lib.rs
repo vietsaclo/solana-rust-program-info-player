@@ -30,32 +30,23 @@ pub fn process_instruction(
   // Get the account to say hello to
   let account = next_account_info(accounts_iter)?;
 
-  msg!("Start instruction decode");
   let message = GreetingAccount::try_from_slice(_instruction_data).map_err(|err| {
     msg!("Receiving counter u32, {:?}", err);
     ProgramError::InvalidInstructionData
   })?;
-  msg!("Greeting passed to program is {:?}", message);
-
-  //let data = &mut &mut account.data.borrow_mut();
-  //msg!("Start save instruction into data");
-  // data[.._instruction_data.len()].copy_from_slice(&_instruction_data);
-
-  msg!("Was sent message {}!", message.counter);
+  msg!("Message from front-end: {:?}", message);
+  msg!("Counter from front-end: {}", message.counter);
 
   // The account must be owned by the program in order to modify its data
   if account.owner != program_id {
     msg!("Greeted account does not have the correct program id");
     return Err(ProgramError::IncorrectProgramId);
   }
-  msg!("programId: {:?}", program_id);
 
   // Increment and store the number of times the account has been greeted
   let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
   greeting_account.counter += message.counter;
   greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
-
-  msg!("Greeted {} time(s)!", greeting_account.counter);
 
   Ok(())
 }

@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@ant-design/icons": "^4.7.0",
     "@solana-mobile/wallet-adapter-mobile": "^0.9.0",
+    "@solana/buffer-layout": "^4.0.0",
     "@solana/wallet-adapter-base": "^0.9.10",
     "@solana/wallet-adapter-react": "^0.15.9",
     "@solana/wallet-adapter-react-ui": "^0.9.12",
@@ -17,6 +19,8 @@
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "antd": "^4.22.4",
+    "borsh": "0.7.0",
+    "buffer": "^6.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
