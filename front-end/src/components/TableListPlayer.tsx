@@ -59,6 +59,17 @@ const data: DataType[] = [
   },
 ];
 
-const TableListPlayer: React.FC = () => <Table columns={columns} dataSource={data} />;
+const TableListPlayer: React.FC = () => {
+  return (
+    <>
+      <h2 className='text-center'>
+        List player
+      </h2>
+      <hr />
+
+      <Table columns={columns} dataSource={data} />
+    </>
+  );
+}
 
 export default TableListPlayer;
