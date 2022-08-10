@@ -18,21 +18,22 @@ const programUserAccountPubKey_SEED = 'info_game_player';
 * Đây là một kiểu Cấu trúc data để mỗi lần gọi
 thì encode gởi đi, lên sol decode lại theo cấu trúc này và sử lý. (Schema Score)
 */
-class ScoreClass {
+class InfoGameClass {
   counter = 0;
   constructor(fields: { counter: number } | undefined = undefined) {
-    if (fields) {
+    if (fields)
       this.counter = fields.counter;
-    }
+    else
+      this.counter = 0;
   }
 }
 
 /**
-* Đây là schema của borsh map từ schema [ScoreClass]
+* Đây là schema của borsh map từ schema [InfoGameClass]
 Đây là cái chính, để borsh biến thành binary.
 */
-const ScoreSchema = new Map([
-  [ScoreClass, {
+const InfoGameSchema = new Map([
+  [InfoGameClass, {
     kind: 'struct', fields: [
       ['counter', 'u32']
     ]
@@ -57,6 +58,9 @@ const HomePage: React.FC = () => {
   // Score for each user
   const [score, setScore] = useState<number>(0);
 
+  // List Account game Info Uses
+  const [listAccountInfoGame, setListAccountInfoGame] = useState<any[]>([]);
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   /**
@@ -64,14 +68,15 @@ const HomePage: React.FC = () => {
  */
   const SCORE_SIZE = useMemo(() => {
     return borsh.serialize(
-      ScoreSchema,
-      new ScoreClass({ counter: 1 }),
+      InfoGameSchema,
+      new InfoGameClass({ counter: 1 }),
     ).length;
   }, []);
 
   // lấy địa chỉ tài khoản program user account public key
   useEffect(() => {
     getAndCheckAndCreateNewProgramUserAccountPubKey();
+    getListPlayer();
   }, [wallet.publicKey]);
 
   const getAndCheckAndCreateNewProgramUserAccountPubKey = async () => {
@@ -92,8 +97,8 @@ const HomePage: React.FC = () => {
       } else {
         setIsProgramUserAccountPubKeyCreated(true);
         setIsLoading(false);
-        const score = decodeScoreFromBuffer(getProgramAccInfo);
-        setScore(score);
+        const infoClass = decodeScoreFromBuffer(getProgramAccInfo);
+        setScore(infoClass.counter);
       }
     }
   }
@@ -132,9 +137,9 @@ const HomePage: React.FC = () => {
     // created success ?
     if (result) {
       setIsProgramUserAccountPubKeyCreated(true);
-      const score = await getScoreFromSolana();
-      console.log({ score });
-      setScore(score);
+      const infoClass = await getInfoGameClassFromSolana();
+      setScore(infoClass.counter);
+      getListPlayer();
     }
   }
 
@@ -179,18 +184,18 @@ const HomePage: React.FC = () => {
     return programUserAccountPubKey.toBase58();
   }, [programUserAccountPubKey]);
 
-  const getScoreFromSolana = async (): Promise<number> => {
-    if (isLoading || !programUserAccountPubKey || !wallet.publicKey) return 0;
+  const getInfoGameClassFromSolana = async (): Promise<InfoGameClass> => {
+    if (isLoading || !programUserAccountPubKey || !wallet.publicKey) return new InfoGameClass();
     const proAccInfo = await connection.getAccountInfo(programUserAccountPubKey);
-    if (proAccInfo === null) return 0;
+    if (proAccInfo === null) return new InfoGameClass();
     return decodeScoreFromBuffer(proAccInfo);
   }
 
   const decodeScoreFromBuffer = (bufferData: web3.AccountInfo<Buffer>) => {
     const scoreClass = borsh.deserialize(
-      ScoreSchema, ScoreClass, bufferData.data,
+      InfoGameSchema, InfoGameClass, bufferData.data,
     );
-    return scoreClass.counter;
+    return scoreClass;
   }
 
   const plusOneScoreNow = async () => {
@@ -199,7 +204,7 @@ const HomePage: React.FC = () => {
       .add(new web3.TransactionInstruction({
         keys: [{ pubkey: programUserAccountPubKey, isSigner: false, isWritable: true }],
         programId: programId,
-        data: Buffer.from(borsh.serialize(ScoreSchema, new ScoreClass({ counter: 1 }))),
+        data: Buffer.from(borsh.serialize(InfoGameSchema, new InfoGameClass({ counter: 1 }))),
       }));
     const resultTransaction = await wallet.sendTransaction(transaction, connection);
     setIsLoading(true);
@@ -209,9 +214,28 @@ const HomePage: React.FC = () => {
       lastValidBlockHeight: lastBlockHash.lastValidBlockHeight,
       signature: resultTransaction,
     });
-    const newScore = await getScoreFromSolana();
-    setScore(newScore);
+    const infoClass = await getInfoGameClassFromSolana();
+    setScore(infoClass.counter);
     setIsLoading(false);
+    getListPlayer();
+  }
+
+  const getListPlayer = async () => {
+    if (!wallet.publicKey) return;
+    const listAccInfo = await connection.getProgramAccounts(programId);
+    if (!listAccInfo) return;
+    const newList = listAccInfo.map((v, k) => {
+      const infoDecode = decodeScoreFromBuffer(v.account);
+      return {
+        key: k,
+        name: 'Comming Soon',
+        age: 'Comming Soon',
+        address: 'Comming Soon',
+        score: infoDecode.counter,
+        account: v.pubkey.toBase58(),
+      }
+    });
+    setListAccountInfoGame(newList);
   }
 
   return (
@@ -232,7 +256,10 @@ const HomePage: React.FC = () => {
       }
       {getProgramAccUI()}
 
-      {isProgramUserAccountPubKeyCreated && <TableListPlayer />}
+      {isProgramUserAccountPubKeyCreated &&
+        <TableListPlayer
+          data={listAccountInfoGame}
+        />}
 
       {isProgramUserAccountPubKeyCreated &&
         <MyGameInfo

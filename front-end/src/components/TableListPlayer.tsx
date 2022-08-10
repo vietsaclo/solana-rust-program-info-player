@@ -1,13 +1,14 @@
-import { Space, Table, Tag } from 'antd';
+import {Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import React from 'react';
 
-interface DataType {
+export interface DataType {
   key: string;
   name: string;
   age: number;
   address: string;
   score: number;
+  account: string;
 }
 
 const columns: ColumnsType<DataType> = [
@@ -38,13 +39,11 @@ const columns: ColumnsType<DataType> = [
     ),
   },
   {
-    title: 'Action',
-    key: 'action',
-    render: (_, record) => (
-      <Space size="middle">
-        Invite {record.name}
-        Delete
-      </Space>
+    title: 'Account',
+    key: 'Account',
+    dataIndex: 'account',
+    render: (account) => (
+      <span>{account}</span>
     ),
   },
 ];
@@ -56,10 +55,15 @@ const data: DataType[] = [
     age: 32,
     address: 'New York No. 1 Lake Park',
     score: 0,
+    account: 'dddd'
   },
 ];
 
-const TableListPlayer: React.FC = () => {
+interface dataProps {
+  data: any[],
+}
+
+const TableListPlayer: React.FC<dataProps> = (props) => {
   return (
     <>
       <h2 className='text-center'>
@@ -67,7 +71,7 @@ const TableListPlayer: React.FC = () => {
       </h2>
       <hr />
 
-      <Table columns={columns} dataSource={data} />
+      <Table columns={columns} dataSource={props.data} />
     </>
   );
 }
