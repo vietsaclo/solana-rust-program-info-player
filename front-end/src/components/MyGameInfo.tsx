@@ -1,14 +1,25 @@
-import { Button, Tag } from 'antd';
+import { Button, Space, Tag } from 'antd';
 import React from 'react';
 import { LoadingOutlined } from "@ant-design/icons";
 
 interface MyGameInfoProps {
   score: number,
+  age: number,
   fun_plusScoreNow: Function,
+  fun_minusScoreNow: Function,
+  fun_updateAge: Function,
   isLoading: boolean,
 }
 
 const MyGameInfo: React.FC<MyGameInfoProps> = (props) => {
+  const [age, setAge] = React.useState<string>('0');
+  const handleUpdateAge = () => {
+    const newAge = Number(age);
+    if (newAge !== props.age && newAge > 0 && newAge < 500 && props.fun_updateAge) {
+      props.fun_updateAge(newAge);
+    }
+  }
+
   return (
     <>
       <h2 className='text-center'>
@@ -20,8 +31,18 @@ const MyGameInfo: React.FC<MyGameInfoProps> = (props) => {
         <span>Vietsaclo</span>
       </div>
       <div>
-        <span className='fw-bold'>Ege: </span>
-        <span>23</span>
+        <Space>
+          <span className='fw-bold'>Ege: </span>
+          {props.isLoading ? <LoadingOutlined /> : <span className='fw-bold text-success'>{props.age}</span>}
+          <span>
+            <input onChange={(e) => setAge(e.target.value)} value={age} style={{ width: '100px' }} type='number' />
+          </span>
+          <span>
+            <Button onClick={() => handleUpdateAge()} type='primary'>
+              Update Age
+            </Button>
+          </span>
+        </Space>
       </div>
       <div>
         <span className='fw-bold'>Address: </span>
@@ -38,11 +59,17 @@ const MyGameInfo: React.FC<MyGameInfoProps> = (props) => {
         </span>
 
         <div className='float-end'>
-          <Button type='primary'
-            onClick={() => props.fun_plusScoreNow()}
-          >
-            +1 Score Now
-          </Button>
+          <Space>
+            <Button type='primary'
+              onClick={() => props.fun_plusScoreNow()}>
+              +1 Score Now
+            </Button>
+
+            <Button type='primary'
+              onClick={() => props.fun_minusScoreNow()}>
+              +2 Score Now
+            </Button>
+          </Space>
         </div>
         <br />
       </div>

@@ -48,17 +48,6 @@ const columns: ColumnsType<DataType> = [
   },
 ];
 
-const data: DataType[] = [
-  {
-    key: '1',
-    name: 'John Brown',
-    age: 32,
-    address: 'New York No. 1 Lake Park',
-    score: 0,
-    account: 'dddd'
-  },
-];
-
 interface dataProps {
   data: any[],
 }
