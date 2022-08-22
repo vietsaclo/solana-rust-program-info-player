@@ -271,7 +271,7 @@ const HomePage: React.FC = () => {
       return {
         key: k,
         name: 'Comming Soon',
-        age: 'Comming Soon',
+        age: infoDecode.age,
         address: 'Comming Soon',
         score: infoDecode.counter,
         account: v.pubkey.toBase58(),
