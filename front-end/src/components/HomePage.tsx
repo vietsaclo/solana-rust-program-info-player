@@ -11,20 +11,27 @@ import { Buffer } from "buffer";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import MyGameInfo from "./MyGameInfo";
 
-const PROGRAM_ID = 'Fndna14bf4mMHyfrye66jJWBrPYpWRWg3r2jtTxbekbx';
+const PROGRAM_ID = 'C2ofeG1JyBFDnKmgfq1KcgA7qPigeMC6g4znmrvnoLKh';
 const programUserAccountPubKey_SEED = 'info_game_player';
+
+interface I_GameConstructor {
+  route: number;
+  counter: number;
+  age: number;
+}
 
 /**
 * Đây là một kiểu Cấu trúc data để mỗi lần gọi
 thì encode gởi đi, lên sol decode lại theo cấu trúc này và sử lý. (Schema Score)
 */
 class InfoGameClass {
-  counter = 0;
-  constructor(fields: { counter: number } | undefined = undefined) {
-    if (fields)
-      this.counter = fields.counter;
-    else
-      this.counter = 0;
+  route: number;
+  counter: number;
+  age: number;
+  constructor(fields: I_GameConstructor) {
+    this.route = fields.route;
+    this.counter = fields.counter;
+    this.age = fields.age;
   }
 }
 
@@ -35,7 +42,9 @@ class InfoGameClass {
 const InfoGameSchema = new Map([
   [InfoGameClass, {
     kind: 'struct', fields: [
-      ['counter', 'u32']
+      ['route', 'u8'],
+      ['counter', 'u32'],
+      ['age', 'u32'],
     ]
   }],
 ]);
@@ -56,7 +65,7 @@ const HomePage: React.FC = () => {
   const [isProgramUserAccountPubKeyCreated, setIsProgramUserAccountPubKeyCreated] = useState<boolean>(false);
 
   // Score for each user
-  const [score, setScore] = useState<number>(0);
+  const [thisAccInfo, setThisAccInfo] = useState<InfoGameClass>();
 
   // List Account game Info Uses
   const [listAccountInfoGame, setListAccountInfoGame] = useState<any[]>([]);
@@ -69,7 +78,7 @@ const HomePage: React.FC = () => {
   const SCORE_SIZE = useMemo(() => {
     return borsh.serialize(
       InfoGameSchema,
-      new InfoGameClass({ counter: 1 }),
+      new InfoGameClass({ counter: 1, route: 0, age: 0 }),
     ).length;
   }, []);
 
@@ -77,6 +86,7 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     getAndCheckAndCreateNewProgramUserAccountPubKey();
     getListPlayer();
+    // eslint-disable-next-line
   }, [wallet.publicKey]);
 
   const getAndCheckAndCreateNewProgramUserAccountPubKey = async () => {
@@ -98,7 +108,7 @@ const HomePage: React.FC = () => {
         setIsProgramUserAccountPubKeyCreated(true);
         setIsLoading(false);
         const infoClass = decodeScoreFromBuffer(getProgramAccInfo);
-        setScore(infoClass.counter);
+        setThisAccInfo(infoClass);
       }
     }
   }
@@ -138,7 +148,7 @@ const HomePage: React.FC = () => {
     if (result) {
       setIsProgramUserAccountPubKeyCreated(true);
       const infoClass = await getInfoGameClassFromSolana();
-      setScore(infoClass.counter);
+      setThisAccInfo(infoClass);
       getListPlayer();
     }
   }
@@ -149,7 +159,7 @@ const HomePage: React.FC = () => {
       content = (
         <>
           Program User Account:&nbsp;
-          <a href={`https://explorer.solana.com/address/${programUserAccPubKeyBase58}?cluster=devnet`} target='_blank'>{programUserAccPubKeyBase58}</a>
+          <a rel="noreferrer" href={`https://explorer.solana.com/address/${programUserAccPubKeyBase58}?cluster=devnet`} target='_blank'>{programUserAccPubKeyBase58}</a>
         </>
       );
     else
@@ -185,9 +195,14 @@ const HomePage: React.FC = () => {
   }, [programUserAccountPubKey]);
 
   const getInfoGameClassFromSolana = async (): Promise<InfoGameClass> => {
-    if (isLoading || !programUserAccountPubKey || !wallet.publicKey) return new InfoGameClass();
+    const defaultClassReturn = new InfoGameClass({
+      counter: 0,
+      route: 0,
+      age: 0,
+    });
+    if (isLoading || !programUserAccountPubKey || !wallet.publicKey) return defaultClassReturn;
     const proAccInfo = await connection.getAccountInfo(programUserAccountPubKey);
-    if (proAccInfo === null) return new InfoGameClass();
+    if (proAccInfo === null) return defaultClassReturn;
     return decodeScoreFromBuffer(proAccInfo);
   }
 
@@ -199,12 +214,39 @@ const HomePage: React.FC = () => {
   }
 
   const plusOneScoreNow = async () => {
+    const data = Buffer.from(borsh.serialize(InfoGameSchema, new InfoGameClass({
+      route: 0,
+      counter: 1,
+      age: 0,
+    })));
+    await handleUpdateDataInSolana(data);
+  }
+
+  const minusOneScoreNow = async () => {
+    const data = Buffer.from(borsh.serialize(InfoGameSchema, new InfoGameClass({
+      route: 0,
+      counter: 2,
+      age: 0,
+    })));
+    await handleUpdateDataInSolana(data);
+  }
+
+  const updateAge = async (newAge: number) => {
+    const data = Buffer.from(borsh.serialize(InfoGameSchema, new InfoGameClass({
+      route: 1,
+      counter: 0,
+      age: newAge,
+    })));
+    await handleUpdateDataInSolana(data);
+  }
+
+  const handleUpdateDataInSolana = async (data: Buffer) => {
     if (isLoading || !wallet.publicKey || !isProgramUserAccountPubKeyCreated || !programUserAccountPubKey) return;
     const transaction = new web3.Transaction()
       .add(new web3.TransactionInstruction({
         keys: [{ pubkey: programUserAccountPubKey, isSigner: false, isWritable: true }],
         programId: programId,
-        data: Buffer.from(borsh.serialize(InfoGameSchema, new InfoGameClass({ counter: 1 }))),
+        data: data,
       }));
     const resultTransaction = await wallet.sendTransaction(transaction, connection);
     setIsLoading(true);
@@ -215,7 +257,7 @@ const HomePage: React.FC = () => {
       signature: resultTransaction,
     });
     const infoClass = await getInfoGameClassFromSolana();
-    setScore(infoClass.counter);
+    setThisAccInfo(infoClass);
     setIsLoading(false);
     getListPlayer();
   }
@@ -243,14 +285,14 @@ const HomePage: React.FC = () => {
       <p className='fw-bold'>
         <span className='text-danger'>Program ID: {programIdBase58}</span>
         <br />
-        <a href={`https://solscan.io/account/${programIdBase58}?cluster=devnet`} target='_blank'>View on solscan.io</a>
+        <a rel="noreferrer" href={`https://solscan.io/account/${programIdBase58}?cluster=devnet`} target='_blank'>View on solscan.io</a>
         &nbsp;&nbsp;
-        <a href={`https://explorer.solana.com/address/${programIdBase58}?cluster=devnet`} target='_blank'>View on explorer.solana</a>
+        <a rel="noreferrer" href={`https://explorer.solana.com/address/${programIdBase58}?cluster=devnet`} target='_blank'>View on explorer.solana</a>
       </p>
       {wallet.publicKey &&
         <p className='fw-bold'>
           <span className='text-success'>PubKey:&nbsp;
-          <a href={`https://explorer.solana.com/address/${walletPubKeyBase58}?cluster=devnet`} target='_blank'>{walletPubKeyBase58}</a>
+          <a rel="noreferrer" href={`https://explorer.solana.com/address/${walletPubKeyBase58}?cluster=devnet`} target='_blank'>{walletPubKeyBase58}</a>
           </span>
         </p>
       }
@@ -261,10 +303,13 @@ const HomePage: React.FC = () => {
           data={listAccountInfoGame}
         />}
 
-      {isProgramUserAccountPubKeyCreated &&
+      {isProgramUserAccountPubKeyCreated && thisAccInfo &&
         <MyGameInfo
-          score={score}
+          score={thisAccInfo.counter}
+          age={thisAccInfo.age}
           fun_plusScoreNow={() => plusOneScoreNow()}
+          fun_minusScoreNow={() => minusOneScoreNow()}
+          fun_updateAge={(newAge: number) => updateAge(newAge)}
           isLoading={isLoading}
         />}
     </div>
